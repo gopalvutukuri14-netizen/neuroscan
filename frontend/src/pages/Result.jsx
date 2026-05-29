@@ -8,7 +8,7 @@ import {
   Maximize2, X
 } from 'lucide-react';
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const STAGES = [
   { id: 'preprocess', label: 'Preprocessing MRI',   minSec: 0,  maxSec: 5,  pct: 20 },

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import os
 
 from app.core.config import settings
 from app.db.database import connect_to_mongo, close_mongo_connection
@@ -15,22 +15,37 @@ from app.api.routes.notes   import router as notes_router
 
 app = FastAPI(title="NeuroScan AI API")
 
+# ── CORS ─────────────────────────────────────────────────────
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        FRONTEND_URL,
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ── Startup / Shutdown ────────────────────────────────────────
 @app.on_event("startup")
-async def startup_db_client():
+async def startup():
+    # Download model if not present (cloud deployment)
+    try:
+        from download_model import download_model
+        download_model()
+    except Exception as e:
+        print(f"⚠️  Model download skipped: {e}")
+
     await connect_to_mongo()
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
+async def shutdown():
     await close_mongo_connection()
 
+# ── Routers ───────────────────────────────────────────────────
 app.include_router(auth_router,    prefix="/auth",    tags=["Auth"])
 app.include_router(upload_router,  prefix="/upload",  tags=["Upload"])
 app.include_router(predict_router)
@@ -39,10 +54,10 @@ app.include_router(report_router)
 app.include_router(admin_router)
 app.include_router(notes_router)
 
-UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
-
 @app.get("/")
 def root():
     return {"message": "NeuroScan AI Backend Running 🚀"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

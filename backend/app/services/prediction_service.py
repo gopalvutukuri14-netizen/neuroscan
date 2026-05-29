@@ -18,7 +18,8 @@ from app.models.schizo_brain_model import SchizoBrainModel
 
 # ── Paths ──────────────────────────────────────────────────────
 MODEL_PATH = Path(__file__).parent.parent / "deployment_model.pt"
-UPLOAD_DIR = Path(__file__).parent.parent.parent / "uploads"
+# Use /tmp for cloud deployment — heatmaps uploaded to S3 after generation
+UPLOAD_DIR = Path(os.getenv("HEATMAP_TMP_DIR", "/tmp"))
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
