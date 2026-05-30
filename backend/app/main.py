@@ -1,8 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os, sys
 from pathlib import Path
-import os
 
+# ── Download model BEFORE importing prediction_service ────────
+# This must happen at module level so the model exists before
+# prediction_service.py tries to load it
+_model_path = Path(__file__).resolve().parent.parent / "deployment_model.pt"
+if not _model_path.exists():
+    print(f"📥 Model not found at {_model_path} — downloading...")
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from download_model import download_model
+        download_model()
+    except Exception as e:
+        print(f"⚠️  Model download failed: {e}")
+else:
+    print(f"✅ Model found at {_model_path} ({_model_path.stat().st_size/1e6:.1f} MB)")
+
+# ── Now safe to import routers ────────────────────────────────
 from app.core.config import settings
 from app.db.database import connect_to_mongo, close_mongo_connection
 from app.api.routes.auth    import router as auth_router
@@ -15,7 +31,6 @@ from app.api.routes.notes   import router as notes_router
 
 app = FastAPI(title="NeuroScan AI API")
 
-# ── CORS ─────────────────────────────────────────────────────
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
@@ -29,23 +44,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Startup / Shutdown ────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    # Download model if not present (cloud deployment)
-    try:
-        from download_model import download_model
-        download_model()
-    except Exception as e:
-        print(f"⚠️  Model download skipped: {e}")
-
     await connect_to_mongo()
 
 @app.on_event("shutdown")
 async def shutdown():
     await close_mongo_connection()
 
-# ── Routers ───────────────────────────────────────────────────
 app.include_router(auth_router,    prefix="/auth",    tags=["Auth"])
 app.include_router(upload_router,  prefix="/upload",  tags=["Upload"])
 app.include_router(predict_router)

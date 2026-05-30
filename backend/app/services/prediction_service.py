@@ -17,7 +17,7 @@ from scipy.ndimage import zoom, gaussian_filter
 from app.models.schizo_brain_model import SchizoBrainModel
 
 # ── Paths ──────────────────────────────────────────────────────
-MODEL_PATH = Path(__file__).parent.parent / "deployment_model.pt"
+MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "deployment_model.pt"
 # Use /tmp for cloud deployment — heatmaps uploaded to S3 after generation
 UPLOAD_DIR = Path(os.getenv("HEATMAP_TMP_DIR", "/tmp"))
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -69,7 +69,14 @@ def load_model():
     return model, threshold
 
 
-MODEL, THRESHOLD = load_model()
+# Lazy load — model downloaded at startup before this is called
+MODEL    = None
+THRESHOLD = None
+
+def _ensure_model_loaded():
+    global MODEL, THRESHOLD
+    if MODEL is None:
+        MODEL, THRESHOLD = load_model()
 
 
 # ── Preprocessing ──────────────────────────────────────────────
@@ -319,6 +326,7 @@ def generate_gradcam(volume_tensor: torch.Tensor,
 
 # ── Main prediction entry point ────────────────────────────────
 def run_prediction(file_bytes: bytes, filename: str, record_id: str) -> dict:
+    _ensure_model_loaded()
     print(f"\n{'='*50}")
     print(f"  Starting prediction for record: {record_id}")
     print(f"  File: {filename}")
