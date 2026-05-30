@@ -20,7 +20,7 @@ def download_model():
     try:
         import gdown
         url = f"https://drive.google.com/uc?id={FILE_ID}"
-        gdown.download(url, str(MODEL_PATH), quiet=False, fuzzy=True)
+        gdown.download(url, str(MODEL_PATH), quiet=False)
         if MODEL_PATH.exists():
             size_mb = MODEL_PATH.stat().st_size / 1e6
             print(f"✅ Model downloaded ({size_mb:.1f} MB)")
