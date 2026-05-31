@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     ADMIN_SECRET_KEY: str = os.getenv("ADMIN_SECRET_KEY", "neuroscan_admin_2026")
 
+    BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
+
     # AWS S3
     AWS_ACCESS_KEY_ID    : str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
