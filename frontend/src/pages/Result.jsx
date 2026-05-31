@@ -203,7 +203,9 @@ const Result = () => {
         setResult({
           prediction : res.data.prediction,
           confidence : res.data.confidence_score ?? res.data.confidence,
-          heatmap_url: `${BASE_URL}${res.data.heatmap_url}`,
+          heatmap_url: res.data.heatmap_url.startsWith('http') 
+            ? res.data.heatmap_url 
+            : `${BASE_URL}${res.data.heatmap_url}`,
         });
       } catch (err) {
         setError(err.response?.data?.detail || 'Analysis failed. Please try again.');

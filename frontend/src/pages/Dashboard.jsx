@@ -126,7 +126,7 @@ const Dashboard = () => {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/history');
+      const res = await api.get('/history/');
       setHistory(res.data);
     } catch (err) {
       console.error(err);
