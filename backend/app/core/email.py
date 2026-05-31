@@ -12,7 +12,7 @@ def send_otp_email(to_email: str, otp: str) -> bool:
     if api_key:
         try:
             payload = json.dumps({
-                "sender":      {"name": "NeuroScan AI", "email": "noreply@neuroscan.ai"},
+                "sender":      {"name": "NeuroScan AI", "email": "gopalvutukuri14@gmail.com"},
                 "to":          [{"email": to_email}],
                 "subject":     "NeuroScan AI — Your Verification Code",
                 "htmlContent": f"""
