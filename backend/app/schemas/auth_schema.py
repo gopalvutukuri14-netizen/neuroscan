@@ -39,3 +39,20 @@ class UserResponse(BaseModel):
 
 class ResendOTP(BaseModel):
     email: EmailStr
+
+# ── Forgot Password Schemas ──────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    """Step 1 — user provides their email to receive a reset OTP."""
+    email: EmailStr
+
+class VerifyResetOTP(BaseModel):
+    """Step 2 — user provides email + the OTP they received."""
+    email: EmailStr
+    otp: str
+
+class ResetPassword(BaseModel):
+    """Step 3 — user provides email + OTP + new password to complete reset."""
+    email: EmailStr
+    otp: str
+    new_password: str = Field(..., min_length=6)

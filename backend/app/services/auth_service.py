@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from app.db.database import get_database
 from app.models.user import UserModel
-from app.schemas.auth_schema import UserCreate, UserLogin, AdminLogin, OTPVerify, VALID_ROLES
+from app.schemas.auth_schema import UserCreate, UserLogin, AdminLogin, OTPVerify, VALID_ROLES, ForgotPasswordRequest, VerifyResetOTP, ResetPassword
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from app.core.config import settings
 from app.services.otp_service import OTPService
@@ -35,7 +35,6 @@ class AuthService:
         if user_data.role not in VALID_ROLES:
             raise HTTPException(400, f"Invalid role. Allowed: {', '.join(VALID_ROLES)}")
 
-        # Block admin self-registration explicitly
         if user_data.role == "admin":
             raise HTTPException(400, "Admin accounts cannot be created via signup.")
 
@@ -83,7 +82,6 @@ class AuthService:
         if not user or not verify_password(user_data.password, user["password_hash"]):
             raise HTTPException(401, "Invalid email or password")
 
-        # Block admins from using the normal login endpoint
         if user.get("role") == "admin":
             raise HTTPException(403, "Admin accounts must use the admin login.")
 
@@ -95,14 +93,12 @@ class AuthService:
     # ── Admin login (secret key required) ────────────────────
     @staticmethod
     async def admin_login(data: AdminLogin):
-        # 1. Validate secret key FIRST — fail fast, no DB hint
         if data.secret_key != settings.ADMIN_SECRET_KEY:
             raise HTTPException(401, "Invalid credentials")
 
         db = get_database()
         user = await db.users.find_one({"email": data.email})
 
-        # Same generic error — don't reveal whether email exists
         if not user or not verify_password(data.password, user["password_hash"]):
             raise HTTPException(401, "Invalid credentials")
 
@@ -113,3 +109,70 @@ class AuthService:
             raise HTTPException(403, "Admin account is not verified")
 
         return _build_login_response(user)
+
+    # ── Forgot Password ── Step 1: Send reset OTP ────────────
+    @staticmethod
+    async def forgot_password(data: ForgotPasswordRequest):
+        db   = get_database()
+        user = await db.users.find_one({"email": data.email})
+
+        # Always return success — don't reveal whether email exists (security best practice)
+        if not user:
+            return {"message": "If this email is registered, a reset code has been sent."}
+
+        await OTPService.create_and_send_otp(data.email)
+        return {"message": "If this email is registered, a reset code has been sent."}
+
+    # ── Forgot Password ── Step 2: Verify reset OTP ──────────
+    @staticmethod
+    async def verify_reset_otp(data: VerifyResetOTP):
+        db   = get_database()
+        user = await db.users.find_one({"email": data.email})
+
+        if not user:
+            raise HTTPException(404, "User not found")
+
+        if user.get("otp") != data.otp:
+            raise HTTPException(400, "Invalid OTP")
+
+        if not user.get("otp_expiry") or user.get("otp_expiry") < datetime.utcnow():
+            raise HTTPException(400, "OTP has expired. Please request a new one.")
+
+        # Mark OTP as verified (but don't clear it yet — needed for step 3)
+        await db.users.update_one(
+            {"email": data.email},
+            {"$set": {"reset_otp_verified": True}},
+        )
+        return {"message": "OTP verified. You can now reset your password."}
+
+    # ── Forgot Password ── Step 3: Reset password ────────────
+    @staticmethod
+    async def reset_password(data: ResetPassword):
+        db   = get_database()
+        user = await db.users.find_one({"email": data.email})
+
+        if not user:
+            raise HTTPException(404, "User not found")
+
+        # Re-verify OTP + expiry for security (prevents skipping step 2)
+        if user.get("otp") != data.otp:
+            raise HTTPException(400, "Invalid OTP")
+
+        if not user.get("otp_expiry") or user.get("otp_expiry") < datetime.utcnow():
+            raise HTTPException(400, "OTP has expired. Please restart the reset process.")
+
+        if not user.get("reset_otp_verified"):
+            raise HTTPException(400, "OTP not verified. Please complete step 2 first.")
+
+        # Hash and save new password, clear OTP fields
+        new_hash = get_password_hash(data.new_password)
+        await db.users.update_one(
+            {"email": data.email},
+            {"$set": {
+                "password_hash":       new_hash,
+                "otp":                 None,
+                "otp_expiry":          None,
+                "reset_otp_verified":  False,
+            }},
+        )
+        return {"message": "Password reset successfully. You can now log in."}

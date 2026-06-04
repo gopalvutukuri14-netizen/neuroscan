@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.schemas.auth_schema import UserCreate, UserLogin, AdminLogin, OTPVerify, ResendOTP
+from app.schemas.auth_schema import UserCreate, UserLogin, AdminLogin, OTPVerify, ResendOTP, ForgotPasswordRequest, VerifyResetOTP, ResetPassword
 from app.services.auth_service import AuthService
 from app.services.otp_service import OTPService
 from app.api.dependencies import get_current_user
@@ -43,3 +43,20 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "role"      : current_user.get("role", "patient"),
         "is_verified": current_user["is_verified"],
     }
+
+# ── Forgot Password Flow ─────────────────────────────────────
+
+@router.post("/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    """Step 1: User enters email → send reset OTP via Brevo."""
+    return await AuthService.forgot_password(data)
+
+@router.post("/verify-reset-otp")
+async def verify_reset_otp(data: VerifyResetOTP):
+    """Step 2: Verify the 6-digit OTP sent to email."""
+    return await AuthService.verify_reset_otp(data)
+
+@router.post("/reset-password")
+async def reset_password(data: ResetPassword):
+    """Step 3: Set new password after OTP verified."""
+    return await AuthService.reset_password(data)

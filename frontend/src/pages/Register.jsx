@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { Brain, User, Mail, Lock, UserRound, Stethoscope } from 'lucide-react';
+import { Brain, User, Mail, Lock, UserRound, Stethoscope, Eye, EyeOff } from 'lucide-react';
 
 // Admin is NOT available on signup — only via internal promotion
 const ROLES = [
@@ -13,6 +13,7 @@ const Register = () => {
   const [username, setUsername] = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [role,     setRole]     = useState('patient');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -33,7 +34,9 @@ const Register = () => {
     }
   };
 
-  const inputCls = "appearance-none block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
+  const inputCls =
+    'appearance-none block w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm ' +
+    'placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm';
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 flex flex-col justify-center py-6 sm:px-6 lg:px-8"
@@ -50,7 +53,7 @@ const Register = () => {
         <div className="bg-white py-8 px-4 shadow-xl shadow-slate-200/50 sm:rounded-2xl sm:px-10 border border-slate-100">
           <form className="space-y-5" onSubmit={handleRegister}>
 
-            {/* ── Role picker — 2 columns (no admin) ── */}
+            {/* ── Role picker ── */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">I am a…</label>
               <div className="grid grid-cols-2 gap-3">
@@ -103,15 +106,25 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password with eye toggle */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="password" required minLength={6}
+                <input
+                  type={showPass ? 'text' : 'password'} required minLength={6}
                   placeholder="Min. 6 characters"
                   value={password} onChange={e => setPassword(e.target.value)}
-                  className={inputCls} />
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  tabIndex={-1}
+                >
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
